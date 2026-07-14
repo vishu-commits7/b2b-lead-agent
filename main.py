@@ -45,6 +45,36 @@ def scrape_live_company_site(url: str) -> str:
         return f"Error: Status code {response.status_code}"
     except Exception as e:
         return f"Network Error: {str(e)}"
+        # --- AUTOMATED GOOGLE SEARCH AGENT ---
+def discover_company_urls(query: str, num_results: int = 5) -> List[str]:
+    """Searches Google for the target niche and extracts clean root domains."""
+    discovered_urls = []
+    search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}&num={num_results + 5}"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+    
+    try:
+        response = httpx.get(search_url, headers=headers, timeout=10.0)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, "html.parser")
+            # Look for standard Google Search link anchors
+            for a in soup.find_all('a', href=True):
+                href = a['href']
+                if "/url?q=" in href:
+                    clean_url = href.split("/url?q=")[1].split("&")[0]
+                    # Exclude aggregators/directories to keep leads hyper-targeted
+                    if any(x in clean_url for x in ["google.com", "linkedin.com", "yelp.com", "clutch.co", "upwork.com", "wikipedia.org"]):
+                        continue
+                    # Clean up the domain to root form
+                    from urllib.parse import urlparse
+                    domain = urlparse(clean_url).netloc
+                    if domain and domain not in discovered_urls:
+                        discovered_urls.append(domain)
+                if len(discovered_urls) >= num_results:
+                    break
+    except Exception as e:
+        pass
+    
+    return discovered_urls
 
 # --- 3. STREAMLIT WEB UI SETUP ---
 st.set_page_config(page_title="LeadAgent AI | Premium Data Terminal", layout="wide", initial_sidebar_state="expanded")
@@ -164,17 +194,44 @@ st.sidebar.markdown("<h2 style='color:#9ca3af; font-size:1rem; font-weight:600;'
 icp_instruction = st.sidebar.text_area("Ideal Customer Profile Criteria", 
     value="B2B SaaS or Enterprise software platforms looking for infrastructure scaling automation.", height=120)
 
-# Inputs
-urls_input = st.text_area("🔗 Target Domains (Enter one per line)", 
-                          value="stripe.com\nhubspot.com\nzapier.com", height=120)
+# --- NEW AUTOMATED SEARCH INPUTS ---
+col1, col2 = st.columns(2)
+with col1:
+    search_niche = st.text_input("🎯 Target Business Niche", value="Software Development Agencies")
+with col2:
+    search_city = st.text_input("📍 Target Location / City", value="Austin")
 
+# Number of targets to scrape automatically
+num_leads = st.slider("🔢 Number of leads to find automatically", min_value=3, max_value=15, value=5)
 st.markdown("<br>", unsafe_allow_html=True)
 
 if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_container_width=True):
     if not api_key:
         st.error("Authentication Failure: Please provide a valid Gemini API Key to run the pipeline.")
     else:
-        urls = [u.strip() for u in urls_input.split("\n") if u.strip()]
+       # --- NEW CONSOLE LOG FOR DISCOVERY PHASE ---
+        status_container = st.container()
+        
+        with status_container:
+            st.markdown("<h3>🛸 Sequence Initialized...</h3>", unsafe_allow_html=True)
+            console_log = st.empty()
+            
+            # Combine niche and city into a solid search query
+            full_query = f"{search_niche} in {search_city}"
+            console_log.markdown(f"**[Terminal Log]** Launching background autonomous search for: `{full_query}`...")
+            
+            # Automatically find the URLs!
+            urls = discover_company_urls(full_query, num_results=num_leads)
+            
+            if not urls:
+                st.error("Discovery Failure: Could not scrape root search domains. Try another city or niche.")
+                st.stop()
+                
+            console_log.markdown(f"**[Terminal Log]** Discovery Engine found {len(urls)} target agencies. Initiating live audit pipeline...")
+            time.sleep(1.5)
+            
+            p_bar = st.progress(0)
+            # The rest of your loop (for idx, url in enumerate(urls):) stays exactly the same!
         
         try:
             client = genai.Client(api_key=api_key)
