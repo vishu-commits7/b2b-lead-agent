@@ -46,27 +46,63 @@ def scrape_live_company_site(url: str) -> str:
     except Exception as e:
         return f"Network Error: {str(e)}"
         # --- AUTOMATED GOOGLE SEARCH AGENT ---
+# --- AUTOMATED GOOGLE SEARCH AGENT (UPGRADED WITH SERPER) ---
 def discover_company_urls(query: str, num_results: int = 5) -> List[str]:
-    """Searches Google for the target niche and extracts clean root domains."""
+    """Uses Serper API to bypass Google blocks and discover clean root domains."""
     discovered_urls = []
-    search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}&num={num_results + 5}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+    # Replace the text below with your actual API key from serper.dev
+    SERPER_API_KEY = "YOUR_SERPER_API_KEY_HERE" 
+    
+    url = "https://google.serper.dev/search"
+    payload = {"q": query, "num": num_results + 5}
+    headers = {
+        'X-API-KEY': SERPER_API_KEY,
+        'Content-Type': 'application/json'
+    }
     
     try:
-        response = httpx.get(search_url, headers=headers, timeout=10.0)
+        response = httpx.post(url, json=payload, headers=headers, timeout=10.0)
         if response.status_code == 200:
-            soup = BeautifulSoup(response.text, "html.parser")
-            # Look for standard Google Search link anchors
-            for a in soup.find_all('a', href=True):
-                href = a['href']
-                if "/url?q=" in href:
-                    clean_url = href.split("/url?q=")[1].split("&")[0]
-                    # Exclude aggregators/directories to keep leads hyper-targeted
-                    if any(x in clean_url for x in ["google.com", "linkedin.com", "yelp.com", "clutch.co", "upwork.com", "wikipedia.org"]):
+            results = response.json().get("organic", [])
+            for item in results:
+                link = item.get("link", "")
+                if link:
+                    if any(x in link for x in ["google.com", "linkedin.com", "yelp.com", "clutch.co", "upwork.com", "wikipedia.org"]):
                         continue
-                    # Clean up the domain to root form
                     from urllib.parse import urlparse
-                    domain = urlparse(clean_url).netloc
+                    domain = urlparse(link).netloc
+                    if domain and domain not in discovered_urls:
+                        discovered_urls.append(domain)
+                if len(discovered_urls) >= num_results:
+                    break
+    except Exception as e:
+        pass
+    
+    return discovered_urls# --- AUTOMATED GOOGLE SEARCH AGENT (UPGRADED WITH SERPER) ---
+def discover_company_urls(query: str, num_results: int = 5) -> List[str]:
+    """Uses Serper API to bypass Google blocks and discover clean root domains."""
+    discovered_urls = []
+    # Replace the text below with your actual API key from serper.dev
+    SERPER_API_KEY = "38ac0bd933f5c7593dc9b43e57cc2601ddb87450" 
+    
+    url = "https://google.serper.dev/search"
+    payload = {"q": query, "num": num_results + 5}
+    headers = {
+        'X-API-KEY': SERPER_API_KEY,
+        'Content-Type': 'application/json'
+    }
+    
+    try:
+        response = httpx.post(url, json=payload, headers=headers, timeout=10.0)
+        if response.status_code == 200:
+            results = response.json().get("organic", [])
+            for item in results:
+                link = item.get("link", "")
+                if link:
+                    if any(x in link for x in ["google.com", "linkedin.com", "yelp.com", "clutch.co", "upwork.com", "wikipedia.org"]):
+                        continue
+                    from urllib.parse import urlparse
+                    domain = urlparse(link).netloc
                     if domain and domain not in discovered_urls:
                         discovered_urls.append(domain)
                 if len(discovered_urls) >= num_results:
@@ -75,7 +111,6 @@ def discover_company_urls(query: str, num_results: int = 5) -> List[str]:
         pass
     
     return discovered_urls
-
 # --- 3. STREAMLIT WEB UI SETUP ---
 st.set_page_config(page_title="LeadAgent AI | Premium Data Terminal", layout="wide", initial_sidebar_state="expanded")
 
