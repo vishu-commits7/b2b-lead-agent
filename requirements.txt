@@ -1,4 +1,0 @@
-streamlit
-httpx
-beautifulsoup4
-google-genai
