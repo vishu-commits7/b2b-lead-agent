@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 import streamlit as st
 from google import genai
 from google.genai import types
+import resend
 
 # --- 1. DATA STRUCTURES ---
 class LeadCompanyInfo(BaseModel):
@@ -223,7 +224,10 @@ st.sidebar.markdown("<h1 style='color:#ffffff; font-size:2rem; font-weight:800; 
 st.sidebar.markdown("<h2 style='color:#9ca3af; font-size:1rem; font-weight:600;'>🛠️ Connection Security</h2>", unsafe_allow_html=True)
 api_key = st.sidebar.text_input("Gemini API Key", value=os.environ.get("GEMINI_API_KEY", ""), type="password")
 model_choice = st.sidebar.selectbox("Select Core Engine", ["gemini-3.1-flash-lite", "gemini-3.5-flash"])
-
+st.sidebar.markdown("---")
+st.sidebar.markdown("<h2 style='color:#9ca3af; font-size:1rem; font-weight:600;'>📧 Email Delivery Config</h2>", unsafe_allow_html=True)
+resend_api_key = st.sidebar.text_input("Resend API Key", value=os.environ.get("RESEND_API_KEY", ""), type="password")
+sender_email = st.sidebar.text_input("Sender Email", value="onboarding@resend.dev")
 st.sidebar.markdown("---")
 st.sidebar.markdown("<h2 style='color:#9ca3af; font-size:1rem; font-weight:600;'>🎯 Target ICP Profile</h2>", unsafe_allow_html=True)
 icp_instruction = st.sidebar.text_area("Ideal Customer Profile Criteria", 
@@ -361,6 +365,48 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                 with st.expander(f"✉️ View Outreach Strategy Draft for {lead.company.name}"):
                     st.markdown(f"**Subject Line:** `{lead.outreach_sequence.subject_line}`")
                     st.code(lead.outreach_sequence.email_body, language="text")
+                    
+                    # --- NEW LIVE EMAIL SENDING COMPONENT ---
+                    st.markdown("### 🚀 Trigger Live Outreach")
+                    target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}")
+                    
+                    if st.button(f"Send Email to {lead.company.name}", key=f"btn_{url}"):
+                        if not resend_api_key:
+                            st.error("Please add a Resend API key in the sidebar to send live pitches.")
+                        else:
+                            try:
+                                resend.api_key = resend_api_key
+                                params = {
+                                    "from": sender_email,
+                                    "to": [target_recipient],
+                                    "subject": lead.outreach_sequence.subject_line,
+                                    "text": lead.outreach_sequence.email_body
+                                }
+                                resend.Emails.send(params)
+                                st.success(f"🎉 Email successfully dispatched to {target_recipient}!")
+                            except Exception as email_err:
+                                st.error(f"Failed to deliver email: {email_err}")
+                    
+                    # --- NEW LIVE EMAIL SENDING COMPONENT ---
+                    st.markdown("### 🚀 Trigger Live Outreach")
+                    target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}")
+                    
+                    if st.button(f"Send Email to {lead.company.name}", key=f"btn_{url}"):
+                        if not resend_api_key:
+                            st.error("Please add a Resend API key in the sidebar to send live pitches.")
+                        else:
+                            try:
+                                resend.api_key = resend_api_key
+                                params = {
+                                    "from": sender_email,
+                                    "to": [target_recipient],
+                                    "subject": lead.outreach_sequence.subject_line,
+                                    "text": lead.outreach_sequence.email_body
+                                }
+                                resend.Emails.send(params)
+                                st.success(f"🎉 Email successfully dispatched to {target_recipient}!")
+                            except Exception as email_err:
+                                st.error(f"Failed to deliver email: {email_err}")
         
         # Export Actions
         st.markdown("<br>", unsafe_allow_html=True)
