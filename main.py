@@ -261,7 +261,9 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
             # The rest of your loop (for idx, url in enumerate(urls):) stays exactly the same!
         
         try:
-            client = genai.Client(api_key=api_key)
+            # Replace 'client = genai.Client(...)' with this:
+            genai.configure(api_key=st.session_state.gemini_api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
         except Exception as e:
             st.error(f"Failed to initialize client: {e}")
             st.stop()
