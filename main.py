@@ -401,52 +401,88 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         for idx, item in enumerate(filtered_leads):
             url, lead = item
             
-            # Interactive Checkbox
-            is_selected = st.checkbox(
-                f"📥 Include {lead.company.name} in final batch download", 
-                value=st.session_state.selected_leads.get(url, True),
-                key=f"check_{url}_{idx}"
-            )
-            st.session_state.selected_leads[url] = is_selected
+            # --- HIGH FIDELITY DESIGN INJECTION ---
+            st.markdown("""
+            <style>
+            .premium-lead-card {
+                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                border: 1px solid #334155;
+                padding: 1.5rem;
+                border-radius: 12px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+                margin-top: 0.5rem;
+                margin-bottom: 1rem;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .premium-lead-card:hover {
+                border-color: #6366f1;
+                box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+                transform: translateY(-2px);
+            }
+            .glow-badge {
+                padding: 0.35rem 0.8rem;
+                border-radius: 30px;
+                font-size: 0.8rem;
+                font-weight: 700;
+                letter-spacing: 0.06rem;
+                text-transform: uppercase;
+                display: inline-block;
+            }
+            .badge-qualified-glow {
+                background: rgba(16, 185, 129, 0.1);
+                color: #34d399;
+                border: 1px solid rgba(16, 185, 129, 0.4);
+                box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+            }
+            .badge-disqualified-glow {
+                background: rgba(239, 68, 68, 0.1);
+                color: #f87171;
+                border: 1px solid rgba(239, 68, 68, 0.4);
+                box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+            }
+            .reasoning-box {
+                background: rgba(15, 23, 42, 0.5);
+                padding: 1rem;
+                border-radius: 8px;
+                border-left: 4px solid #6366f1;
+                margin-top: 1rem;
+            }
+            </style>
+            """, unsafe_allow_html=True)
 
-            # Define styles dynamically based on qualification status
-            badge_style = "badge-q" if lead.is_qualified else "badge-d"
-            badge_text = f"QUALIFIED ({lead.qualification_score}/100)" if lead.is_qualified else f"DISQUALIFIED ({lead.qualification_score}/100)"
+            # Assign dynamic color tags based on system classification
+            badge_glow_style = "badge-qualified-glow" if lead.is_qualified else "badge-disqualified-glow"
+            badge_label = f"🔥 Qualified ({lead.qualification_score}/100)" if lead.is_qualified else f"❄️ Disqualified ({lead.qualification_score}/100)"
 
-            # High-fidelity Dynamic Card Layout
+            # Render the upgraded high-end card layout
             st.markdown(f"""
-            <div class="custom-lead-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-                    <h3 style="margin:0; color:#ffffff; font-size:1.5rem; font-weight:800; letter-spacing:-0.02rem;">🏢 {lead.company.name}</h3>
-                    <span class="status-badge {badge_style}">{badge_text}</span>
+            <div class="premium-lead-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <h3 style="margin:0; color:#ffffff; font-size:1.55rem; font-weight:800; letter-spacing:-0.02rem;">🏢 {lead.company.name}</h3>
+                    <span class="glow-badge {badge_glow_style}">{badge_label}</span>
                 </div>
-                <p style="color:#9ca3af; margin: 0.3rem 0; font-size: 0.95rem;">
-                    <span style="color:#818cf8; font-weight:600;">Industry:</span> {lead.company.industry} &nbsp;|&nbsp; 
-                    <span style="color:#818cf8; font-weight:600;">Model:</span> {lead.company.business_model}
-                </p>
-                <div style="background: rgba(15, 23, 42, 0.6); padding: 0.8rem; border-radius: 0.5rem; border-left: 3px solid #6366f1; margin-top: 0.8rem;">
-                    <p style="color:#e2e8f0; margin:0; line-height:1.5; font-size: 0.92rem;">💡 <strong>AI Analysis Reasoning:</strong> {lead.reasoning}</p>
+                <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem; font-size: 0.9rem; color: #9ca3af;">
+                    <div><b style="color: #818cf8;">📌 Industry:</b> {lead.company.industry}</div>
+                    <div><b style="color: #818cf8;">⚡ Model:</b> {lead.company.business_model}</div>
+                </div>
+                <div class="reasoning-box">
+                    <p style="color:#e2e8f0; margin:0; line-height:1.6; font-size: 0.93rem;"><strong>AI Diagnostic Analysis:</strong> {lead.reasoning}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-            # ONLY ONE COPY OF BUTTONS: Render cleanly right beneath the custom card
-            has_li = bool(getattr(lead.company, 'linkedin_url', None))
-            has_tw = bool(getattr(lead.company, 'twitter_url', None))
+            # Clean render block for core platform link shortcuts
+            has_linkedin = bool(getattr(lead.company, 'linkedin_url', None))
+            has_twitter = bool(getattr(lead.company, 'twitter_url', None))
             
-            if has_li or has_tw:
+            if has_linkedin or has_twitter:
                 col_li, col_tw, _ = st.columns([1.5, 1.5, 4])
                 with col_li:
-                    if has_li:
+                    if has_linkedin:
                         st.link_button("🤝 Company LinkedIn", lead.company.linkedin_url, use_container_width=True)
                 with col_tw:
-                    if has_tw:
+                    if has_twitter:
                         st.link_button("🐦 Company Twitter/X", lead.company.twitter_url, use_container_width=True)
-
-            # Outreach Expanders
-            if lead.outreach_sequence:
-                with st.expander(f"✉️ View Outreach Strategy Draft for {lead.company.name}"):
-                    tab_email, tab_linkedin = st.tabs(["📧 Email Sequence", "🤝 LinkedIn Connect Note"])
         # Dynamic Batch Spreadsheet Builder
         batch_output = io.StringIO()
         batch_writer = csv.writer(batch_output)
