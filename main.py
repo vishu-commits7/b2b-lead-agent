@@ -46,40 +46,7 @@ def scrape_live_company_site(url: str) -> str:
         return f"Error: Status code {response.status_code}"
     except Exception as e:
         return f"Network Error: {str(e)}"
-        # --- AUTOMATED GOOGLE SEARCH AGENT ---
-# --- AUTOMATED GOOGLE SEARCH AGENT (UPGRADED WITH SERPER) ---
-def discover_company_urls(query: str, num_results: int = 5) -> List[str]:
-    """Uses Serper API to bypass Google blocks and discover clean root domains."""
-    discovered_urls = []
-    # Replace the text below with your actual API key from serper.dev
-    SERPER_API_KEY = "YOUR_SERPER_API_KEY_HERE" 
-    
-    url = "https://google.serper.dev/search"
-    payload = {"q": query, "num": num_results + 5}
-    headers = {
-        'X-API-KEY': SERPER_API_KEY,
-        'Content-Type': 'application/json'
-    }
-    
-    try:
-        response = httpx.post(url, json=payload, headers=headers, timeout=10.0)
-        if response.status_code == 200:
-            results = response.json().get("organic", [])
-            for item in results:
-                link = item.get("link", "")
-                if link:
-                    if any(x in link for x in ["google.com", "linkedin.com", "yelp.com", "clutch.co", "upwork.com", "wikipedia.org"]):
-                        continue
-                    from urllib.parse import urlparse
-                    domain = urlparse(link).netloc
-                    if domain and domain not in discovered_urls:
-                        discovered_urls.append(domain)
-                if len(discovered_urls) >= num_results:
-                    break
-    except Exception as e:
-        pass
-    
-    return discovered_urls# --- AUTOMATED GOOGLE SEARCH AGENT (UPGRADED WITH SERPER) ---
+
 def discover_company_urls(query: str, num_results: int = 5) -> List[str]:
     """Uses Serper API to bypass Google blocks and discover clean root domains."""
     discovered_urls = []
@@ -338,39 +305,83 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(["Target URL", "Company Name", "Industry", "Score", "Qualified", "Reasoning", "Subject Line", "Email Body"])
+    if 'processed_leads' in locals() and processed_leads:
+        # --- NEW DASHBOARD METRICS SECTION ---
+        total_leads = len(processed_leads)
+        qualified_leads = sum(1 for _, lead in processed_leads if lead.is_qualified)
+        qualification_rate = (qualified_leads / total_leads) * 100 if total_leads > 0 else 0
+        avg_score = sum(lead.qualification_score for _, lead in processed_leads) / total_leads if total_leads > 0 else 0
+
+        st.markdown("### 📊 Pipeline Insights Dashboard")
+        col1, col2, col3, col4 = st.columns(4)
         
-        for url, lead in processed_leads:
+        with col1:
+            st.markdown(f"""
+            <div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;">
+                <p style="color: #9ca3af; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">Total Leads</p>
+                <h2 style="color: #ffffff; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{total_leads}</h2>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col2:
+            st.markdown(f"""
+            <div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;">
+                <p style="color: #10b981; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">✅ Qualified</p>
+                <h2 style="color: #10b981; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{qualified_leads}</h2>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col3:
+            st.markdown(f"""
+            <div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;">
+                <p style="color: #3b82f6; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">Conversion Rate</p>
+                <h2 style="color: #3b82f6; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{qualification_rate:.1f}%</h2>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col4:
+            st.markdown(f"""
+            <div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;">
+                <p style="color: #f59e0b; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">Avg Match Score</p>
+                <h2 style="color: #f59e0b; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{avg_score:.1f}/100</h2>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown("<br><hr>", unsafe_allow_html=True)
+        # --- END OF DASHBOARD METRICS ---
+
+        for idx, item in enumerate(processed_leads):
+            url, lead = item
             writer.writerow([
                 url, lead.company.name, lead.company.industry, lead.qualification_score,
                 lead.is_qualified, lead.reasoning,
                 lead.outreach_sequence.subject_line if lead.outreach_sequence else "N/A",
                 lead.outreach_sequence.email_body if lead.outreach_sequence else "N/A"
             ])
-            
+
             badge_class = "badge-qualified" if lead.is_qualified else "badge-unqualified"
             badge_text = f"QUALIFIED ({lead.qualification_score}/100)" if lead.is_qualified else f"DISQUALIFIED ({lead.qualification_score}/100)"
-            
+
             st.markdown(f"""
             <div class="result-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="margin:0; color:#ffffff; font-size:1.6rem; font-weight:800; letter-spacing:-0.03em;">🏢 {lead.company.name}</h3>
+                    <h3 style="margin:0; color:#ffffff; font-size:1.6rem; font-weight:800; letter-spacing:-0.03rem;">🏢 {lead.company.name}</h3>
                     <span class="{badge_class}">{badge_text}</span>
                 </div>
                 <p style="color:#9ca3af; margin: 0.2rem 0;"><strong>Detected Industry:</strong> {lead.company.industry} | <strong>Business Model:</strong> {lead.company.business_model}</p>
-                <p style="color:#d1d5db; margin-top:0.8rem; line-height:1.6;">💡 <strong>AI Analysis reasoning:</strong> {lead.reasoning}</p>
+                <p style="color:#d1d5db; margin-top:0.8rem; line-height:1.6;">💡 <strong>AI Analysis Reasoning:</strong> {lead.reasoning}</p>
             </div>
             """, unsafe_allow_html=True)
-            
+
             if lead.outreach_sequence:
                 with st.expander(f"✉️ View Outreach Strategy Draft for {lead.company.name}"):
                     st.markdown(f"**Subject Line:** `{lead.outreach_sequence.subject_line}`")
                     st.code(lead.outreach_sequence.email_body, language="text")
-                    
-                    # --- NEW LIVE EMAIL SENDING COMPONENT ---
+
                     st.markdown("### 🚀 Trigger Live Outreach")
-                    target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}")
-                    
-                    if st.button(f"Send Email to {lead.company.name}", key=f"btn_{url}"):
+                    target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}_{idx}")
+
+                    if st.button(f"Send Email to {lead.company.name}", key=f"btn_{url}_{idx}"):
                         if not resend_api_key:
                             st.error("Please add a Resend API key in the sidebar to send live pitches.")
                         else:
@@ -383,35 +394,14 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                                     "text": lead.outreach_sequence.email_body
                                 }
                                 resend.Emails.send(params)
-                                st.success(f"🎉 Email successfully dispatched to {target_recipient}!")
+                                st.success(f"📩 Email successfully dispatched to {target_recipient}!")
                             except Exception as email_err:
                                 st.error(f"Failed to deliver email: {email_err}")
-                    
-                    # --- NEW LIVE EMAIL SENDING COMPONENT ---
-                    st.markdown("### 🚀 Trigger Live Outreach")
-                    target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}")
-                    
-                    if st.button(f"Send Email to {lead.company.name}", key=f"btn_{url}"):
-                        if not resend_api_key:
-                            st.error("Please add a Resend API key in the sidebar to send live pitches.")
-                        else:
-                            try:
-                                resend.api_key = resend_api_key
-                                params = {
-                                    "from": sender_email,
-                                    "to": [target_recipient],
-                                    "subject": lead.outreach_sequence.subject_line,
-                                    "text": lead.outreach_sequence.email_body
-                                }
-                                resend.Emails.send(params)
-                                st.success(f"🎉 Email successfully dispatched to {target_recipient}!")
-                            except Exception as email_err:
-                                st.error(f"Failed to deliver email: {email_err}")
-        
+
         # Export Actions
         st.markdown("<br>", unsafe_allow_html=True)
         st.download_button(
-            label="📥 Export Immersive Data CSV Spreadsheet",
+            label="📊 Export Immersive Data CSV Spreadsheet",
             data=output.getvalue(),
             file_name="autonomous_leads_export.csv",
             mime="text/csv",
