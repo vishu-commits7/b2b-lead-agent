@@ -9,6 +9,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 import streamlit as st
 import google.generativeai as genai
+import config
 from google.generativeai import types
 import resend
 
@@ -265,7 +266,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         try:
             # Replace 'client = genai.Client(...)' with this:
             genai.configure(api_key=st.session_state.gemini_api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            model = genai.GenerativeModel('gemini-1.5-flash-001')
         except Exception as e:
             st.error(f"Failed to initialize client: {e}")
             st.stop()
@@ -307,7 +308,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         - Ensure the linkedin_note field is completely filled out contextually and strictly under 300 characters total.
         """
     genai.configure(api_key=st.session_state.gemini_api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel(config.GEMINI_MODEL)
     
     
         # ... rest of your code ...
