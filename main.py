@@ -23,6 +23,7 @@ class LeadCompanyInfo(BaseModel):
 class OutreachDraft(BaseModel):
     subject_line: str = Field(description="A distinct, professional, non-spammy email subject line")
     email_body: str = Field(description="A highly personalized cold email draft under 120 words referencing their site copy")
+    linkedin_note: str = Field(description="A highly tailored, contextual LinkedIn connection request note under 300 characters total")
 
 class LeadQualificationResult(BaseModel):
     company: LeadCompanyInfo
@@ -199,6 +200,17 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("<h2 style='color:#9ca3af; font-size:1rem; font-weight:600;'>🎯 Target ICP Profile</h2>", unsafe_allow_html=True)
 icp_instruction = st.sidebar.text_area("Ideal Customer Profile Criteria", 
     value="B2B SaaS or Enterprise software platforms looking for infrastructure scaling automation.", height=120)
+st.sidebar.markdown("<hr>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='color: #9ca3af; font-size:1rem; font-weight:600;'>🎯 Pitch Customization</h2>", unsafe_allow_html=True)
+outreach_tone = st.sidebar.selectbox(
+    "Outreach Tone",
+    options=["Professional & Authoritative", "Casual & Friendly", "Short & Direct", "Value-Driven & Concise"],
+    index=2
+)
+custom_hook = st.sidebar.text_input(
+    "Special Offer / Call to Action (Optional)",
+    placeholder="e.g., Free 15-minute system audit"
+)
 
 # --- NEW AUTOMATED SEARCH INPUTS ---
 col1, col2 = st.columns(2)
@@ -270,7 +282,17 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                 log_text += f"\n\n**[Terminal Log]** Querying {model_choice} engine for ICP Match..."
                 console_log.markdown(log_text)
                 
-                prompt = f"Analyze the scraped webpage text from {url}. Evaluate against the target ICP: {icp_instruction}\n\nContext:\n{site_copy}"
+                prompt = f"""
+        Analyze the scraped webpage text from {url}. Evaluate against the target ICP: {icp_instruction}
+        
+        Context from website copy:
+        {site_copy}
+        
+        Requirements for the generated outreach sequence:
+        - Tone of voice: Use a {outreach_tone} style.
+        - Direct Call to Action/Offer: {custom_hook if custom_hook else "Propose a quick introductory chat"}
+        - Ensure the linkedin_note field is completely filled out contextually and strictly under 300 characters total.
+        """
                 
                 try:
                     response = client.models.generate_content(
@@ -316,41 +338,24 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.markdown(f"""
-            <div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;">
-                <p style="color: #9ca3af; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">Total Leads</p>
-                <h2 style="color: #ffffff; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{total_leads}</h2>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f'<div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;"><p style="color: #9ca3af; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">Total Leads</p><h2 style="color: #ffffff; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{total_leads}</h2></div>', unsafe_allow_html=True)
         with col2:
-            st.markdown(f"""
-            <div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;">
-                <p style="color: #10b981; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">✅ Qualified</p>
-                <h2 style="color: #10b981; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{qualified_leads}</h2>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f'<div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;"><p style="color: #10b981; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">✅ Qualified</p><h2 style="color: #10b981; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{qualified_leads}</h2></div>', unsafe_allow_html=True)
         with col3:
-            st.markdown(f"""
-            <div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;">
-                <p style="color: #3b82f6; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">Conversion Rate</p>
-                <h2 style="color: #3b82f6; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{qualification_rate:.1f}%</h2>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f'<div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;"><p style="color: #3b82f6; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">Conversion Rate</p><h2 style="color: #3b82f6; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{qualification_rate:.1f}%</h2></div>', unsafe_allow_html=True)
         with col4:
-            st.markdown(f"""
-            <div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;">
-                <p style="color: #f59e0b; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">Avg Match Score</p>
-                <h2 style="color: #f59e0b; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{avg_score:.1f}/100</h2>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div style="background: #1e293b; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #334155; text-align: center;"><p style="color: #f59e0b; margin: 0; font-size: 0.875rem; font-weight: 600; text-transform: uppercase;">Avg Match Score</p><h2 style="color: #f59e0b; margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: 800;">{avg_score:.1f}/100</h2></div>', unsafe_allow_html=True)
             
-        st.markdown("<br><hr>", unsafe_allow_html=True)
-        # --- END OF DASHBOARD METRICS ---
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # ⚡ DYNAMIC SLIDER FILTER
+        min_score_filter = st.slider("⚡ Filter displayed leads by minimum score threshold:", min_value=0, max_value=100, value=0, step=5)
+        st.markdown("<hr>", unsafe_allow_html=True)
 
-        for idx, item in enumerate(processed_leads):
+        # Filter the leads dynamically in real time based on the slider
+        filtered_leads = [item for item in processed_leads if item[1].qualification_score >= min_score_filter]
+
+        for idx, item in enumerate(filtered_leads):
             url, lead = item
             writer.writerow([
                 url, lead.company.name, lead.company.industry, lead.qualification_score,
@@ -375,28 +380,39 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
 
             if lead.outreach_sequence:
                 with st.expander(f"✉️ View Outreach Strategy Draft for {lead.company.name}"):
-                    st.markdown(f"**Subject Line:** `{lead.outreach_sequence.subject_line}`")
-                    st.code(lead.outreach_sequence.email_body, language="text")
+                    # 🤝 TABBED INTERFACE FOR EMAIL VS LINKEDIN
+                    tab_email, tab_linkedin = st.tabs(["📧 Email Sequence", "🤝 LinkedIn Connect Note"])
+                    
+                    with tab_email:
+                        st.markdown(f"**Subject Line:** `{lead.outreach_sequence.subject_line}`")
+                        st.code(lead.outreach_sequence.email_body, language="text")
 
-                    st.markdown("### 🚀 Trigger Live Outreach")
-                    target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}_{idx}")
+                        st.markdown("### 🚀 Trigger Live Outreach")
+                        target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}_{idx}")
 
-                    if st.button(f"Send Email to {lead.company.name}", key=f"btn_{url}_{idx}"):
-                        if not resend_api_key:
-                            st.error("Please add a Resend API key in the sidebar to send live pitches.")
-                        else:
-                            try:
-                                resend.api_key = resend_api_key
-                                params = {
-                                    "from": sender_email,
-                                    "to": [target_recipient],
-                                    "subject": lead.outreach_sequence.subject_line,
-                                    "text": lead.outreach_sequence.email_body
-                                }
-                                resend.Emails.send(params)
-                                st.success(f"📩 Email successfully dispatched to {target_recipient}!")
-                            except Exception as email_err:
-                                st.error(f"Failed to deliver email: {email_err}")
+                        if st.button(f"Send Email to {lead.company.name}", key=f"btn_{url}_{idx}"):
+                            if not resend_api_key:
+                                st.error("Please add a Resend API key in the sidebar to send live pitches.")
+                            else:
+                                try:
+                                    resend.api_key = resend_api_key
+                                    params = {
+                                        "from": sender_email,
+                                        "to": [target_recipient],
+                                        "subject": lead.outreach_sequence.subject_line,
+                                        "text": lead.outreach_sequence.email_body
+                                    }
+                                    resend.Emails.send(params)
+                                    st.success(f"📩 Email successfully dispatched to {target_recipient}!")
+                                except Exception as email_err:
+                                    st.error(f"Failed to deliver email: {email_err}")
+                                    
+                    with tab_linkedin:
+                        st.markdown("**Personalized Connection Request Note:**")
+                        char_count = len(lead.outreach_sequence.linkedin_note)
+                        color = "#10b981" if char_count <= 300 else "#ef4444"
+                        st.markdown(f"<span style='color: {color}; font-weight:bold;'>Character Count: {char_count}/300</span>", unsafe_allow_html=True)
+                        st.code(lead.outreach_sequence.linkedin_note, language="text")
 
         # Export Actions
         st.markdown("<br>", unsafe_allow_html=True)
