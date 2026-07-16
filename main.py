@@ -21,10 +21,10 @@ class LeadCompanyInfo(BaseModel):
     twitter_url: Optional[str] = Field(description="The company's official Twitter/X corporate profile URL if found, else empty string")
 
 class OutreachDraft(BaseModel):
-    subject_line: str = Field(description="A distinct, professional, non-spammy email subject line")
-    email_body: str = Field(description="A highly personalized cold email draft under 120 words referencing their site copy")
+    subject_line: str = Field(description="A distinct, professional, non-spammy email subject line matching the chosen psychological framework")
+    email_body: str = Field(description="A highly personalized cold email draft under 120 words engineered specifically using the template framework rules")
     linkedin_note: str = Field(description="A highly tailored, contextual LinkedIn connection request note under 300 characters total")
-
+    chosen_framework: str = Field(description="The structural marketing angle used to craft this message")
 class LeadQualificationResult(BaseModel):
     company: LeadCompanyInfo
     qualification_score: int = Field(description="ICP qualification score from 0 to 100")
@@ -187,29 +187,38 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Sidebar UI
-st.sidebar.markdown("<h1 style='color:#ffffff; font-size:2rem; font-weight:800; letter-spacing:-0.05em; margin-bottom:1.5rem;'>Data Terminal</h1>", unsafe_allow_html=True)
-st.sidebar.markdown("<h2 style='color:#9ca3af; font-size:1rem; font-weight:600;'>🛠️ Connection Security</h2>", unsafe_allow_html=True)
-api_key = st.sidebar.text_input("Gemini API Key", value=os.environ.get("GEMINI_API_KEY", ""), type="password")
-model_choice = st.sidebar.selectbox("Select Core Engine", ["gemini-3.1-flash-lite", "gemini-3.5-flash"])
+# --- SIDEBAR UI ---
+st.sidebar.title("Data Terminal")
+
+# Define the framework variable globally
+if "marketing_framework" not in st.session_state:
+    st.session_state.marketing_framework = "PAS (Problem, Agitation, Solution)"
+
+st.sidebar.markdown("### 🧠 Persuasion Psychology Model")
+st.session_state.marketing_framework = st.sidebar.selectbox(
+    "Select Copywriting Strategy:",
+    ["PAS (Problem, Agitation, Solution)", "AIDA (Attention, Interest, Desire, Action)", "Direct Value Hook", "Soft Curiosity Drop"]
+)
+
+# Search History Tracker
+if "search_history_log" not in st.session_state:
+    st.session_state.search_history_log = []
+
+st.sidebar.markdown("#### 📜 Recent Queries:")
+for past_query in st.session_state.search_history_log[-5:]:
+    st.sidebar.markdown(f"`🔍 {past_query}`")
+
 st.sidebar.markdown("---")
-st.sidebar.markdown("<h2 style='color:#9ca3af; font-size:1rem; font-weight:600;'>📧 Email Delivery Config</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("### 🔑 Connection Security")
+api_key = st.sidebar.text_input("Gemini API Key", value=os.environ.get("GEMINI_API_KEY", ""), type="password")
+
+st.sidebar.markdown("### 📧 Email Delivery")
 resend_api_key = st.sidebar.text_input("Resend API Key", value=os.environ.get("RESEND_API_KEY", ""), type="password")
 sender_email = st.sidebar.text_input("Sender Email", value="onboarding@resend.dev")
-st.sidebar.markdown("---")
-st.sidebar.markdown("<h2 style='color:#9ca3af; font-size:1rem; font-weight:600;'>🎯 Target ICP Profile</h2>", unsafe_allow_html=True)
-icp_instruction = st.sidebar.text_area("Ideal Customer Profile Criteria", 
-    value="B2B SaaS or Enterprise software platforms looking for infrastructure scaling automation.", height=120)
-st.sidebar.markdown("<hr>", unsafe_allow_html=True)
-st.sidebar.markdown("<h2 style='color: #9ca3af; font-size:1rem; font-weight:600;'>🎯 Pitch Customization</h2>", unsafe_allow_html=True)
-outreach_tone = st.sidebar.selectbox(
-    "Outreach Tone",
-    options=["Professional & Authoritative", "Casual & Friendly", "Short & Direct", "Value-Driven & Concise"],
-    index=2
-)
-custom_hook = st.sidebar.text_input(
-    "Special Offer / Call to Action (Optional)",
-    placeholder="e.g., Free 15-minute system audit"
-)
+
+st.sidebar.markdown("### 🎯 Target ICP")
+icp_instruction = st.sidebar.text_area("Ideal Customer Profile Criteria", height=100)
+custom_hook = st.sidebar.text_input("Special Offer (Optional)")
 if "selected_leads" not in st.session_state:
     st.session_state.selected_leads = {}
 # --- NEW AUTOMATED SEARCH INPUTS ---
@@ -269,7 +278,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
             
             for idx, url in enumerate(urls):
                 # Update 1: Show connection & start crawling
-                log_text = f"**[Terminal Log]** Authenticating... SUCCESS. Model Core: `{model_choice}`\n\n**[Terminal Log]** Initializing crawling for: `{url}`..."
+                log_text = f"[Terminal Log] Authenticating... SUCCESS. Model Core: Gemini 1.5 Flash..."
                 console_log.markdown(log_text)
                 
                 site_copy = scrape_live_company_site(url)
@@ -279,7 +288,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                 console_log.markdown(log_text)
                 
                 # Update 3: Evaluating AI matching rules
-                log_text += f"\n\n**[Terminal Log]** Querying {model_choice} engine for ICP Match..."
+                og_text += f"\n\n[Terminal Log] Querying Gemini 1.5 Flash engine for ICP Match..."
                 console_log.markdown(log_text)
                 
                 prompt = f"""
@@ -289,14 +298,14 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         {site_copy}
         
         Requirements for the generated outreach sequence:
-        - Tone of voice: Use a {outreach_tone} style.
+        - Tone of voice: Use a {st.session_state.marketing_framework} style.
         - Direct Call to Action/Offer: {custom_hook if custom_hook else "Propose a quick introductory chat"}
         - Ensure the linkedin_note field is completely filled out contextually and strictly under 300 characters total.
         """
                 
                 try:
                     response = client.models.generate_content(
-                        model=model_choice,
+                        model="gemini-1.5-flash",
                         contents=prompt,
                         config=types.GenerateContentConfig(
                             system_instruction="You are a professional B2B lead generation workflow engine. Output structural JSON matching the target schema.",
@@ -398,63 +407,82 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         </style>
         """, unsafe_allow_html=True)
 
-        for idx, item in enumerate(filtered_leads):
+        # Ensure our target deletion tracker state is initialized
+        if "removed_lead_urls" not in st.session_state:
+            st.session_state.removed_lead_urls = set()
+
+        # Filter out anything the user manually tossed into the trash bin
+        active_display_leads = [item for item in filtered_leads if item[0] not in st.session_state.removed_lead_urls]
+
+        # Inject high-performance CSS styles for advanced components
+        st.markdown("""
+        <style>
+        .premium-lead-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .premium-lead-card:hover {
+            border-color: #6366f1;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+            transform: translateY(-2px);
+        }
+        .glow-badge {
+            padding: 0.35rem 0.8rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.06rem;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+        .badge-qualified-glow {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+        .badge-disqualified-glow {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+        .reasoning-box {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #6366f1;
+            margin-top: 1rem;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        for idx, item in enumerate(active_display_leads):
             url, lead = item
             
-            # --- HIGH FIDELITY DESIGN INJECTION ---
-            st.markdown("""
-            <style>
-            .premium-lead-card {
-                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-                border: 1px solid #334155;
-                padding: 1.5rem;
-                border-radius: 12px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
-                margin-top: 0.5rem;
-                margin-bottom: 1rem;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            .premium-lead-card:hover {
-                border-color: #6366f1;
-                box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
-                transform: translateY(-2px);
-            }
-            .glow-badge {
-                padding: 0.35rem 0.8rem;
-                border-radius: 30px;
-                font-size: 0.8rem;
-                font-weight: 700;
-                letter-spacing: 0.06rem;
-                text-transform: uppercase;
-                display: inline-block;
-            }
-            .badge-qualified-glow {
-                background: rgba(16, 185, 129, 0.1);
-                color: #34d399;
-                border: 1px solid rgba(16, 185, 129, 0.4);
-                box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
-            }
-            .badge-disqualified-glow {
-                background: rgba(239, 68, 68, 0.1);
-                color: #f87171;
-                border: 1px solid rgba(239, 68, 68, 0.4);
-                box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
-            }
-            .reasoning-box {
-                background: rgba(15, 23, 42, 0.5);
-                padding: 1rem;
-                border-radius: 8px;
-                border-left: 4px solid #6366f1;
-                margin-top: 1rem;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+            # CONTROL TOP PANEL: Selection Checkbox alongside a Trash Deletion Button
+            col_checkbox, col_trash = st.columns([5, 1])
+            with col_checkbox:
+                is_selected = st.checkbox(
+                    f"📥 Include {lead.company.name} in batch distribution package", 
+                    value=st.session_state.selected_leads.get(url, True),
+                    key=f"final_batch_check_{url}_{idx}"
+                )
+                st.session_state.selected_leads[url] = is_selected
+            
+            with col_trash:
+                if st.button("🗑️ Burn Lead", key=f"trash_lead_{url}_{idx}", use_container_width=True):
+                    st.session_state.removed_lead_urls.add(url)
+                    st.rerun()
 
-            # Assign dynamic color tags based on system classification
             badge_glow_style = "badge-qualified-glow" if lead.is_qualified else "badge-disqualified-glow"
             badge_label = f"🔥 Qualified ({lead.qualification_score}/100)" if lead.is_qualified else f"❄️ Disqualified ({lead.qualification_score}/100)"
 
-            # Render the upgraded high-end card layout
+            # Card Engine Graphics Rendering
             st.markdown(f"""
             <div class="premium-lead-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
@@ -471,7 +499,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
             </div>
             """, unsafe_allow_html=True)
 
-            # Clean render block for core platform link shortcuts
+            # Interactive Social Platform Connectors
             has_linkedin = bool(getattr(lead.company, 'linkedin_url', None))
             has_twitter = bool(getattr(lead.company, 'twitter_url', None))
             
@@ -483,6 +511,56 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                 with col_tw:
                     if has_twitter:
                         st.link_button("🐦 Company Twitter/X", lead.company.twitter_url, use_container_width=True)
+
+            # Copywriting Sequences Panels
+            if lead.outreach_sequence:
+               with st.expander(f"✉️ View Outreach Strategy Draft ({st.session_state.marketing_framework})"):
+                    tab_email, tab_linkedin = st.tabs(["📧 Email Sequence", "🤝 LinkedIn Connect Note"])
+                    
+                    with tab_email:
+                        st.markdown(f"**Subject Line:** `{lead.outreach_sequence.subject_line}`")
+                        editable_email = st.text_area(
+                            "✍️ Modify Context Template Output:", 
+                            value=lead.outreach_sequence.email_body, 
+                            height=200, 
+                            key=f"edit_email_{url}_{idx}"
+                        )
+
+                        st.markdown("### 🚀 Trigger Live Outreach")
+                        target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}_{idx}")
+
+                        if st.button(f"Send Email to {lead.company.name}", key=f"btn_{url}_{idx}"):
+                            if not resend_api_key:
+                                st.error("Please add a Resend API key in the sidebar to send live pitches.")
+                            else:
+                                try:
+                                    resend.api_key = resend_api_key
+                                    params = {
+                                        "from": sender_email,
+                                        "to": [target_recipient],
+                                        "subject": lead.outreach_sequence.subject_line,
+                                        "text": editable_email
+                                    }
+                                    resend.Emails.send(params)
+                                    st.success(f"📩 Email successfully dispatched to {target_recipient}!")
+                                except Exception as email_err:
+                                    st.error(f"Failed to deliver email: {email_err}")
+                                    
+                    with tab_linkedin:
+                        st.markdown("**Personalized Connection Request Note:**")
+                        editable_linkedin = st.text_area(
+                            "✍nt Edit LinkedIn Note:", 
+                            value=lead.outreach_sequence.linkedin_note, 
+                            height=120, 
+                            key=f"edit_li_{url}_{idx}"
+                        )
+                        
+                        char_count = len(editable_linkedin)
+                        color = "#10b981" if char_count <= 300 else "#ef4444"
+                        st.markdown(f"<span style='color: {color}; font-weight:bold;'>Character Count: {char_count}/300</span>", unsafe_allow_html=True)
+                        
+                        if char_count > 300:
+                            st.warning("⚠️ This note exceeds the 300-character LinkedIn connection request limit!")
         # Dynamic Batch Spreadsheet Builder
         batch_output = io.StringIO()
         batch_writer = csv.writer(batch_output)
