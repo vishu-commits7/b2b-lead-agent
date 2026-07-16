@@ -210,7 +210,8 @@ for past_query in st.session_state.search_history_log[-5:]:
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔑 Connection Security")
-api_key = st.sidebar.text_input("Gemini API Key", value=os.environ.get("GEMINI_API_KEY", ""), type="password")
+# Change line 213 to this:
+api_key = st.sidebar.text_input("Gemini API Key", value=os.environ.get("GEMINI_API_KEY", ""), type="password", key="gemini_api_key")
 
 st.sidebar.markdown("### 📧 Email Delivery")
 resend_api_key = st.sidebar.text_input("Resend API Key", value=os.environ.get("RESEND_API_KEY", ""), type="password")
