@@ -395,6 +395,16 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
             </div>
             """, unsafe_allow_html=True)
 
+            # Display clickable social links under the card if available
+            if getattr(lead.company, 'linkedin_url', None) or getattr(lead.company, 'twitter_url', None):
+                col_li, col_tw, _ = st.columns([1.5, 1.5, 4])
+                with col_li:
+                    if getattr(lead.company, 'linkedin_url', None):
+                        st.link_button("🤝 Company LinkedIn", lead.company.linkedin_url, use_container_width=True)
+                with col_tw:
+                    if getattr(lead.company, 'twitter_url', None):
+                        st.link_button("🐦 Company Twitter/X", lead.company.twitter_url, use_container_width=True)
+
             # Social shortcuts link buttons
             if lead.company.linkedin_url or lead.company.twitter_url:
                 col_li, col_tw, _ = st.columns([1.5, 1.5, 4])
