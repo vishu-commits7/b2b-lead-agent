@@ -369,87 +369,84 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
             badge_class = "badge-qualified" if lead.is_qualified else "badge-unqualified"
             badge_text = f"QUALIFIED ({lead.qualification_score}/100)" if lead.is_qualified else f"DISQUALIFIED ({lead.qualification_score}/100)"
 
-            # Card Layout
+            # Inject modern glassmorphic/glowing CSS styles dynamically
+        st.markdown("""
+        <style>
+        .custom-lead-card {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 1px solid #334155;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            margin-bottom: 1rem;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .custom-lead-card:hover {
+            border-color: #4f46e5;
+            transform: translateY(-2px);
+        }
+        .status-badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.05rem;
+            text-transform: uppercase;
+        }
+        .badge-q { background-color: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-d { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        </style>
+        """, unsafe_allow_html=True)
+
+        for idx, item in enumerate(filtered_leads):
+            url, lead = item
+            
+            # Interactive Checkbox
+            is_selected = st.checkbox(
+                f"📥 Include {lead.company.name} in final batch download", 
+                value=st.session_state.selected_leads.get(url, True),
+                key=f"check_{url}_{idx}"
+            )
+            st.session_state.selected_leads[url] = is_selected
+
+            # Define styles dynamically based on qualification status
+            badge_style = "badge-q" if lead.is_qualified else "badge-d"
+            badge_text = f"QUALIFIED ({lead.qualification_score}/100)" if lead.is_qualified else f"DISQUALIFIED ({lead.qualification_score}/100)"
+
+            # High-fidelity Dynamic Card Layout
             st.markdown(f"""
-            <div class="result-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="margin:0; color:#ffffff; font-size:1.6rem; font-weight:800; letter-spacing:-0.03rem;">🏢 {lead.company.name}</h3>
-                    <span class="{badge_class}">{badge_text}</span>
+            <div class="custom-lead-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <h3 style="margin:0; color:#ffffff; font-size:1.5rem; font-weight:800; letter-spacing:-0.02rem;">🏢 {lead.company.name}</h3>
+                    <span class="status-badge {badge_style}">{badge_text}</span>
                 </div>
-                <p style="color:#9ca3af; margin: 0.2rem 0;"><strong>Detected Industry:</strong> {lead.company.industry} | <strong>Business Model:</strong> {lead.company.business_model}</p>
-                <p style="color:#d1d5db; margin-top:0.8rem; line-height:1.6;">💡 <strong>AI Analysis Reasoning:</strong> {lead.reasoning}</p>
+                <p style="color:#9ca3af; margin: 0.3rem 0; font-size: 0.95rem;">
+                    <span style="color:#818cf8; font-weight:600;">Industry:</span> {lead.company.industry} &nbsp;|&nbsp; 
+                    <span style="color:#818cf8; font-weight:600;">Model:</span> {lead.company.business_model}
+                </p>
+                <div style="background: rgba(15, 23, 42, 0.6); padding: 0.8rem; border-radius: 0.5rem; border-left: 3px solid #6366f1; margin-top: 0.8rem;">
+                    <p style="color:#e2e8f0; margin:0; line-height:1.5; font-size: 0.92rem;">💡 <strong>AI Analysis Reasoning:</strong> {lead.reasoning}</p>
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
-            # Display clickable social links under the card if available
-            if getattr(lead.company, 'linkedin_url', None) or getattr(lead.company, 'twitter_url', None):
+            # ONLY ONE COPY OF BUTTONS: Render cleanly right beneath the custom card
+            has_li = bool(getattr(lead.company, 'linkedin_url', None))
+            has_tw = bool(getattr(lead.company, 'twitter_url', None))
+            
+            if has_li or has_tw:
                 col_li, col_tw, _ = st.columns([1.5, 1.5, 4])
                 with col_li:
-                    if getattr(lead.company, 'linkedin_url', None):
+                    if has_li:
                         st.link_button("🤝 Company LinkedIn", lead.company.linkedin_url, use_container_width=True)
                 with col_tw:
-                    if getattr(lead.company, 'twitter_url', None):
+                    if has_tw:
                         st.link_button("🐦 Company Twitter/X", lead.company.twitter_url, use_container_width=True)
 
-            # Social shortcuts link buttons
-            if lead.company.linkedin_url or lead.company.twitter_url:
-                col_li, col_tw, _ = st.columns([1.5, 1.5, 4])
-                with col_li:
-                    if lead.company.linkedin_url:
-                        st.link_button("🤝 Company LinkedIn", lead.company.linkedin_url, use_container_width=True)
-                with col_tw:
-                    if lead.company.twitter_url:
-                        st.link_button("🐦 Company Twitter/X", lead.company.twitter_url, use_container_width=True)
-
+            # Outreach Expanders
             if lead.outreach_sequence:
                 with st.expander(f"✉️ View Outreach Strategy Draft for {lead.company.name}"):
                     tab_email, tab_linkedin = st.tabs(["📧 Email Sequence", "🤝 LinkedIn Connect Note"])
-                    
-                    with tab_email:
-                        st.markdown(f"**Subject Line:** `{lead.outreach_sequence.subject_line}`")
-                        editable_email = st.text_area(
-                            "✍️ Edit Email Body Draft:", 
-                            value=lead.outreach_sequence.email_body, 
-                            height=200, 
-                            key=f"edit_email_{url}_{idx}"
-                        )
-
-                        st.markdown("### 🚀 Trigger Live Outreach")
-                        target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}_{idx}")
-
-                        if st.button(f"Send Email to {lead.company.name}", key=f"btn_{url}_{idx}"):
-                            if not resend_api_key:
-                                st.error("Please add a Resend API key in the sidebar to send live pitches.")
-                            else:
-                                try:
-                                    resend.api_key = resend_api_key
-                                    params = {
-                                        "from": sender_email,
-                                        "to": [target_recipient],
-                                        "subject": lead.outreach_sequence.subject_line,
-                                        "text": editable_email
-                                    }
-                                    resend.Emails.send(params)
-                                    st.success(f"📩 Email successfully dispatched to {target_recipient}!")
-                                except Exception as email_err:
-                                    st.error(f"Failed to deliver email: {email_err}")
-                                    
-                    with tab_linkedin:
-                        st.markdown("**Personalized Connection Request Note:**")
-                        editable_linkedin = st.text_area(
-                            "✍️ Edit LinkedIn Note:", 
-                            value=lead.outreach_sequence.linkedin_note, 
-                            height=120, 
-                            key=f"edit_li_{url}_{idx}"
-                        )
-                        
-                        char_count = len(editable_linkedin)
-                        color = "#10b981" if char_count <= 300 else "#ef4444"
-                        st.markdown(f"<span style='color: {color}; font-weight:bold;'>Character Count: {char_count}/300</span>", unsafe_allow_html=True)
-                        
-                        if char_count > 300:
-                            st.warning("⚠️ This note exceeds the 300-character LinkedIn connection request limit!")
-
         # Dynamic Batch Spreadsheet Builder
         batch_output = io.StringIO()
         batch_writer = csv.writer(batch_output)
