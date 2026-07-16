@@ -6,7 +6,7 @@ import os
 
 # Google GenAI Model Configuration
 # Defaulting to gemini-2.5-flash for fast, accurate, and cost-effective text generation.
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash-001")
 
 # Default Target Ideal Customer Profile (ICP) for qualification
 DEFAULT_ICP = {
