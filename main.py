@@ -265,7 +265,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         try:
             # Replace 'client = genai.Client(...)' with this:
             genai.configure(api_key=st.session_state.gemini_api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-1.5-flash-latest')
         except Exception as e:
             st.error(f"Failed to initialize client: {e}")
             st.stop()
