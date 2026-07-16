@@ -305,40 +305,49 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         - Direct Call to Action/Offer: {custom_hook if custom_hook else "Propose a quick introductory chat"}
         - Ensure the linkedin_note field is completely filled out contextually and strictly under 300 characters total.
         """
-               # Add these two lines right before the 'try:' block
-                genai.configure(api_key=st.session_state.gemini_api_key) 
-                model = genai.GenerativeModel('gemini-1.5-flash') 
-                try:
-                    response = model.generate_content(
-                        prompt,
-                        generation_config=types.GenerateContentConfig(
-                            response_mime_type="application/json",
-                            response_schema=LeadQualificationResult,
-                            temperature=0.1,
-                        )
-                    )
-                    result = LeadQualificationResult.model_validate_json(response.text)
-                    processed_leads.append((url, result))
-                    
-                    # Update 4: Final output status of current run
-                    status_type = "QUALIFIED" if result.is_qualified else "DISQUALIFIED"
-                    log_text += f"\n\n**[Terminal Log]** AI Evaluation: COMPLETE. Result: `{status_type}` ({result.qualification_score}/100)."
-                    console_log.markdown(log_text)
-                    time.sleep(0.8) # Quick pause to allow user to visually read the log stream
-                    
-                except Exception as e:
-                    st.error(f"Error evaluating {url}: {e}")
-                
-                p_bar.progress((idx + 1) / len(urls))
-            
-            console_log.markdown("**[TERMINAL STATE]** Pipeline analysis finalized. See immersive results below.")
+    genai.configure(api_key=st.session_state.gemini_api_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    try:
+        generation_config = genai.types.GenerationConfig(
+            response_mime_type="application/json",
+            response_schema=LeadQualificationResult,
+            temperature=0.1,
+        )
         
-        st.markdown("<br><hr><br>", unsafe_allow_html=True)
+        response = model.generate_content(
+            contents=prompt,
+            generation_config=generation_config
+        )
         
-        # Display Dynamic, Claude-style Results
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(["Target URL", "Company Name", "Industry", "Score", "Qualified", "Reasoning", "Subject Line", "Email Body"])
+        result = LeadQualificationResult.model_validate_json(response.text)
+        processed_leads.append((url, result))
+        
+        # ... rest of your code ...
+    except Exception as e:
+        st.error(f"Error evaluating {url}: {e}")
+        genai.configure(api_key=st.session_state.gemini_api_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+
+    # ... (your first try block ends here)
+    result = LeadQualificationResult.model_validate_json(response.text)   
+    processed_leads.append((url, result))
+
+    except Exception as e: # This is the end of the first try/except
+    st.error(f"Error evaluating {url}: {e}")
+
+    # Now the rest of your code continues normally here:
+    st.markdown("<br><hr><br>", unsafe_allow_html=True)
+    # ...
+    except Exception as e:
+    st.error(f"Error evaluating {url}: {e}")
+        
+    st.markdown("<br><hr><br>", unsafe_allow_html=True)
+        
+    # Display Dynamic, Claude-style Results  
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Target URL", "Company Name", "Industry", "Score", "Qualified", "Reasoning", "Subject Line", "Email Body"])
     if 'processed_leads' in locals() and processed_leads:
         # --- PIPELINE METRICS CONTAINER ---
         total_leads = len(processed_leads)
