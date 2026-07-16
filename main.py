@@ -14,11 +14,11 @@ import resend
 
 # --- 1. DATA STRUCTURES ---
 class LeadCompanyInfo(BaseModel):
-    name: str = Field(description="The name of the target company")
-    industry: str = Field(description="The primary industry or vertical")
-    company_size: str = Field(description="Estimated size range or employee count")
-    business_model: str = Field(description="B2B SaaS, Agency, E-commerce, etc.")
-    core_pain_points: List[str] = Field(description="Key pain points discovered from live text")
+    name: str = Field(description="The official legal or trading name of the company")
+    industry: str = Field(description="Primary industry classification")
+    business_model: str = Field(description="e.g., B2B SaaS, Marketplace, Agency, B2C")
+    linkedin_url: Optional[str] = Field(description="The company's official LinkedIn corporate page URL if found or inferred from content, else empty string")
+    twitter_url: Optional[str] = Field(description="The company's official Twitter/X corporate profile URL if found, else empty string")
 
 class OutreachDraft(BaseModel):
     subject_line: str = Field(description="A distinct, professional, non-spammy email subject line")
@@ -183,8 +183,21 @@ st.markdown("""
 <div class="premium-header">
     <div class="premium-logo">🪐</div>
     <h1 class="premium-title">LeadAgent.io</h1>
-    <p class="saas-subtitle">Autonomous Data Terminal for Hyper-Personalized Prospecting</p>
+    <p style="color:#9ca3af; margin: 0.2rem 0;"><strong>Detected Industry:</strong> {lead.company.industry} | <strong>Business Model:</strong> {lead.company.business_model}</p>
+                
+                <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+                {"🔗 LinkedIn Page" if lead.company.linkedin_url else ""} 
+                    {"🐦 Twitter/X" if lead.company.twitter_url else ""}
 </div>
+# Display clickable social links under the card if available
+            if lead.company.linkedin_url or lead.company.twitter_url:
+                col_li, col_tw, _ = st.columns([1, 1, 4])
+                with col_li:
+                    if lead.company.linkedin_url:
+                        st.link_button("🤝 Company LinkedIn", lead.company.linkedin_url, use_container_width=True)
+                with col_tw:
+                    if lead.company.twitter_url:
+                        st.link_button("🐦 Company Twitter/X", lead.company.twitter_url, use_container_width=True)
 """, unsafe_allow_html=True)
 
 # Sidebar UI
@@ -211,7 +224,8 @@ custom_hook = st.sidebar.text_input(
     "Special Offer / Call to Action (Optional)",
     placeholder="e.g., Free 15-minute system audit"
 )
-
+if "selected_leads" not in st.session_state:
+    st.session_state.selected_leads = {}
 # --- NEW AUTOMATED SEARCH INPUTS ---
 col1, col2 = st.columns(2)
 with col1:
@@ -328,7 +342,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         writer = csv.writer(output)
         writer.writerow(["Target URL", "Company Name", "Industry", "Score", "Qualified", "Reasoning", "Subject Line", "Email Body"])
     if 'processed_leads' in locals() and processed_leads:
-        # --- NEW DASHBOARD METRICS SECTION ---
+        # --- PIPELINE METRICS CONTAINER ---
         total_leads = len(processed_leads)
         qualified_leads = sum(1 for _, lead in processed_leads if lead.is_qualified)
         qualification_rate = (qualified_leads / total_leads) * 100 if total_leads > 0 else 0
@@ -348,25 +362,28 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
             
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # ⚡ DYNAMIC SLIDER FILTER
+        # DYNAMIC THRESHOLD SLIDER
         min_score_filter = st.slider("⚡ Filter displayed leads by minimum score threshold:", min_value=0, max_value=100, value=0, step=5)
         st.markdown("<hr>", unsafe_allow_html=True)
 
-        # Filter the leads dynamically in real time based on the slider
+        # Apply filtering
         filtered_leads = [item for item in processed_leads if item[1].qualification_score >= min_score_filter]
 
         for idx, item in enumerate(filtered_leads):
             url, lead = item
-            writer.writerow([
-                url, lead.company.name, lead.company.industry, lead.qualification_score,
-                lead.is_qualified, lead.reasoning,
-                lead.outreach_sequence.subject_line if lead.outreach_sequence else "N/A",
-                lead.outreach_sequence.email_body if lead.outreach_sequence else "N/A"
-            ])
+            
+            # Interactive Checkbox to add/remove this company from the final download sheet
+            is_selected = st.checkbox(
+                f"📥 Include {lead.company.name} in final batch download", 
+                value=st.session_state.selected_leads.get(url, True),
+                key=f"check_{url}_{idx}"
+            )
+            st.session_state.selected_leads[url] = is_selected
 
             badge_class = "badge-qualified" if lead.is_qualified else "badge-unqualified"
             badge_text = f"QUALIFIED ({lead.qualification_score}/100)" if lead.is_qualified else f"DISQUALIFIED ({lead.qualification_score}/100)"
 
+            # Card Layout
             st.markdown(f"""
             <div class="result-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -378,14 +395,28 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
             </div>
             """, unsafe_allow_html=True)
 
+            # Social shortcuts link buttons
+            if lead.company.linkedin_url or lead.company.twitter_url:
+                col_li, col_tw, _ = st.columns([1.5, 1.5, 4])
+                with col_li:
+                    if lead.company.linkedin_url:
+                        st.link_button("🤝 Company LinkedIn", lead.company.linkedin_url, use_container_width=True)
+                with col_tw:
+                    if lead.company.twitter_url:
+                        st.link_button("🐦 Company Twitter/X", lead.company.twitter_url, use_container_width=True)
+
             if lead.outreach_sequence:
                 with st.expander(f"✉️ View Outreach Strategy Draft for {lead.company.name}"):
-                    # 🤝 TABBED INTERFACE FOR EMAIL VS LINKEDIN
                     tab_email, tab_linkedin = st.tabs(["📧 Email Sequence", "🤝 LinkedIn Connect Note"])
                     
                     with tab_email:
                         st.markdown(f"**Subject Line:** `{lead.outreach_sequence.subject_line}`")
-                        st.code(lead.outreach_sequence.email_body, language="text")
+                        editable_email = st.text_area(
+                            "✍️ Edit Email Body Draft:", 
+                            value=lead.outreach_sequence.email_body, 
+                            height=200, 
+                            key=f"edit_email_{url}_{idx}"
+                        )
 
                         st.markdown("### 🚀 Trigger Live Outreach")
                         target_recipient = st.text_input(f"Recipient Email for {lead.company.name}", value=f"hello@{url}", key=f"to_{url}_{idx}")
@@ -400,7 +431,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                                         "from": sender_email,
                                         "to": [target_recipient],
                                         "subject": lead.outreach_sequence.subject_line,
-                                        "text": lead.outreach_sequence.email_body
+                                        "text": editable_email
                                     }
                                     resend.Emails.send(params)
                                     st.success(f"📩 Email successfully dispatched to {target_recipient}!")
@@ -409,17 +440,40 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                                     
                     with tab_linkedin:
                         st.markdown("**Personalized Connection Request Note:**")
-                        char_count = len(lead.outreach_sequence.linkedin_note)
+                        editable_linkedin = st.text_area(
+                            "✍️ Edit LinkedIn Note:", 
+                            value=lead.outreach_sequence.linkedin_note, 
+                            height=120, 
+                            key=f"edit_li_{url}_{idx}"
+                        )
+                        
+                        char_count = len(editable_linkedin)
                         color = "#10b981" if char_count <= 300 else "#ef4444"
                         st.markdown(f"<span style='color: {color}; font-weight:bold;'>Character Count: {char_count}/300</span>", unsafe_allow_html=True)
-                        st.code(lead.outreach_sequence.linkedin_note, language="text")
+                        
+                        if char_count > 300:
+                            st.warning("⚠️ This note exceeds the 300-character LinkedIn connection request limit!")
 
-        # Export Actions
+        # Dynamic Batch Spreadsheet Builder
+        batch_output = io.StringIO()
+        batch_writer = csv.writer(batch_output)
+        batch_writer.writerow(["URL", "Company Name", "Industry", "Match Score", "Status", "Email Subject", "Email Body", "LinkedIn Note"])
+
+        for url, lead in processed_leads:
+            if st.session_state.selected_leads.get(url, False):
+                batch_writer.writerow([
+                    url, lead.company.name, lead.company.industry, lead.qualification_score,
+                    "Qualified" if lead.is_qualified else "Disqualified",
+                    lead.outreach_sequence.subject_line if lead.outreach_sequence else "",
+                    lead.outreach_sequence.email_body if lead.outreach_sequence else "",
+                    lead.outreach_sequence.linkedin_note if lead.outreach_sequence else ""
+                ])
+
         st.markdown("<br>", unsafe_allow_html=True)
         st.download_button(
-            label="📊 Export Immersive Data CSV Spreadsheet",
-            data=output.getvalue(),
-            file_name="autonomous_leads_export.csv",
+            label=f"📊 Export Selected Leads CSV ({sum(1 for v in st.session_state.selected_leads.values() if v)} Selected)",
+            data=batch_output.getvalue(),
+            file_name="selective_leads_export.csv",
             mime="text/csv",
             use_container_width=True
         )
