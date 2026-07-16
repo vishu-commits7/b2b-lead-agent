@@ -14,24 +14,25 @@ import resend
 
 # --- 1. DATA STRUCTURES ---
 class LeadCompanyInfo(BaseModel):
-    name: str = Field(description="The official legal or trading name of the company")
-    industry: str = Field(description="Primary industry classification")
-    business_model: str = Field(description="e.g., B2B SaaS, Marketplace, Agency, B2C")
-    linkedin_url: Optional[str] = Field(description="The company's official LinkedIn corporate page URL if found or inferred from content, else empty string")
-    twitter_url: Optional[str] = Field(description="The company's official Twitter/X corporate profile URL if found, else empty string")
+    model_config = {"extra": "ignore"}  # <--- MUST ADD THIS
+    name: str = Field(description="...")
+    industry: str = Field(description="...")
+    # ... your other fields ...
+
+
 
 class OutreachDraft(BaseModel):
     subject_line: str = Field(description="A distinct, professional, non-spammy email subject line matching the chosen psychological framework")
     email_body: str = Field(description="A highly personalized cold email draft under 120 words engineered specifically using the template framework rules")
     linkedin_note: str = Field(description="A highly tailored, contextual LinkedIn connection request note under 300 characters total")
     chosen_framework: str = Field(description="The structural marketing angle used to craft this message")
-class LeadQualificationResult(BaseModel):
-    company: LeadCompanyInfo
-    qualification_score: int = Field(description="ICP qualification score from 0 to 100")
-    is_qualified: bool = Field(description="True if qualification_score is >= 70")
-    reasoning: str = Field(description="Clear breakdown explaining the qualification score")
-    outreach_sequence: Optional[OutreachDraft] = Field(None)
 
+
+class LeadQualificationResult(BaseModel):
+    model_config = {"extra": "ignore"}  # <--- MUST ADD THIS
+    company: LeadCompanyInfo
+    qualification_score: int
+    # ... your other fields ...
 # --- 2. LIVE CRAWLING ENGINE ---
 def scrape_live_company_site(url: str) -> str:
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) B2BWebAgent/2.1"}
