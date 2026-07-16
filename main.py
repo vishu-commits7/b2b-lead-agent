@@ -288,7 +288,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                 console_log.markdown(log_text)
                 
                 # Update 3: Evaluating AI matching rules
-                og_text += f"\n\n[Terminal Log] Querying Gemini 1.5 Flash engine for ICP Match..."
+                log_text += f"\n\n[Terminal Log] Querying Gemini 1.5 Flash engine for ICP Match..."
                 console_log.markdown(log_text)
                 
                 prompt = f"""
