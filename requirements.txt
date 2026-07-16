@@ -4,3 +4,4 @@ beautifulsoup4
 pydantic
 google-genai
 resend
+google-generativeai>=0.8.0

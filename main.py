@@ -305,7 +305,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                 
                 try:
                     response = client.models.generate_content(
-                        model="gemini-1.5-flash",
+                        model="models/gemini-1.5-flash-001",
                         contents=prompt,
                         config=types.GenerateContentConfig(
                             system_instruction="You are a professional B2B lead generation workflow engine. Output structural JSON matching the target schema.",
