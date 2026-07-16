@@ -8,8 +8,8 @@ from bs4 import BeautifulSoup
 from typing import List, Optional
 from pydantic import BaseModel, Field
 import streamlit as st
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from google.generativeai import types
 import resend
 
 # --- 1. DATA STRUCTURES ---
@@ -305,7 +305,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
                 
                 try:
                     response = client.models.generate_content(
-                        model="gemini-1.5-flash",
+                        model="gemini-1.5-flash-latest",
                         contents=prompt,
                         config=types.GenerateContentConfig(
                             system_instruction="You are a professional B2B lead generation workflow engine. Output structural JSON matching the target schema.",
