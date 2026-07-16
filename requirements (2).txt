@@ -1,6 +1,0 @@
-streamlit
-httpx
-beautifulsoup4
-pydantic
-google-genai
-resend
