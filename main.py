@@ -362,7 +362,7 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
             is_selected = st.checkbox(
                 f"📥 Include {lead.company.name} in final batch download", 
                 value=st.session_state.selected_leads.get(url, True),
-                key=f"check_{url}_{idx}"
+                key=f"final_batch_check_{url}_{idx}"
             )
             st.session_state.selected_leads[url] = is_selected
 
