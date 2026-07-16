@@ -302,17 +302,17 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
         - Direct Call to Action/Offer: {custom_hook if custom_hook else "Propose a quick introductory chat"}
         - Ensure the linkedin_note field is completely filled out contextually and strictly under 300 characters total.
         """
-                
+               # Add these two lines right before the 'try:' block
+                genai.configure(api_key=st.session_state.gemini_api_key) 
+                model = genai.GenerativeModel('gemini-1.5-flash') 
                 try:
-                    response = client.models.generate_content(
-                        model="gemini-1.5-flash-latest",
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction="You are a professional B2B lead generation workflow engine. Output structural JSON matching the target schema.",
+                    response = model.generate_content(
+                        prompt,
+                        generation_config=types.GenerateContentConfig(
                             response_mime_type="application/json",
                             response_schema=LeadQualificationResult,
                             temperature=0.1,
-                        ),
+                        )
                     )
                     result = LeadQualificationResult.model_validate_json(response.text)
                     processed_leads.append((url, result))
