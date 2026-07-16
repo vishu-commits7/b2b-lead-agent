@@ -183,21 +183,7 @@ st.markdown("""
 <div class="premium-header">
     <div class="premium-logo">🪐</div>
     <h1 class="premium-title">LeadAgent.io</h1>
-    <p style="color:#9ca3af; margin: 0.2rem 0;"><strong>Detected Industry:</strong> {lead.company.industry} | <strong>Business Model:</strong> {lead.company.business_model}</p>
-                
-                <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
-                {"🔗 LinkedIn Page" if lead.company.linkedin_url else ""} 
-                    {"🐦 Twitter/X" if lead.company.twitter_url else ""}
 </div>
-# Display clickable social links under the card if available
-            if lead.company.linkedin_url or lead.company.twitter_url:
-                col_li, col_tw, _ = st.columns([1, 1, 4])
-                with col_li:
-                    if lead.company.linkedin_url:
-                        st.link_button("🤝 Company LinkedIn", lead.company.linkedin_url, use_container_width=True)
-                with col_tw:
-                    if lead.company.twitter_url:
-                        st.link_button("🐦 Company Twitter/X", lead.company.twitter_url, use_container_width=True)
 """, unsafe_allow_html=True)
 
 # Sidebar UI
