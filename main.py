@@ -308,39 +308,30 @@ if st.button("🚀 Initialize Autonomous Agents Pipeline", type="primary", use_c
     genai.configure(api_key=st.session_state.gemini_api_key)
     model = genai.GenerativeModel('gemini-1.5-flash')
     
-    try:
-        generation_config = genai.types.GenerationConfig(
-            response_mime_type="application/json",
-            response_schema=LeadQualificationResult,
-            temperature=0.1,
-        )
-        
-        response = model.generate_content(
-            contents=prompt,
-            generation_config=generation_config
-        )
-        
-        result = LeadQualificationResult.model_validate_json(response.text)
-        processed_leads.append((url, result))
-        
+    
         # ... rest of your code ...
+    # ... inside your loop ...
+   # Ensure this is inside your loop: for idx, url in enumerate(urls):
+    try:
+            # 1. Configuration
+            generation_config = genai.types.GenerationConfig(
+                response_mime_type="application/json",
+                response_schema=LeadQualificationResult,
+                temperature=0.1,
+            )
+            
+            # 2. API Call
+            response = model.generate_content(prompt, generation_config=generation_config)
+            
+            # 3. Validation
+            result = LeadQualificationResult.model_validate_json(response.text)
+            processed_leads.append((url, result))
+            
     except Exception as e:
-        st.error(f"Error evaluating {url}: {e}")
-        genai.configure(api_key=st.session_state.gemini_api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+            # 4. Error Handling
+            st.error(f"Error evaluating {url}: {e}")
 
-    # ... (your first try block ends here)
-    result = LeadQualificationResult.model_validate_json(response.text)   
-    processed_leads.append((url, result))
-
-    except Exception as e: # This is the end of the first try/except
-    st.error(f"Error evaluating {url}: {e}")
-
-    # Now the rest of your code continues normally here:
-    st.markdown("<br><hr><br>", unsafe_allow_html=True)
-    # ...
-    except Exception as e:
-    st.error(f"Error evaluating {url}: {e}")
+# Everything after this point is back at the indentation level of the 'try'
         
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
         
