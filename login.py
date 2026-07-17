@@ -121,11 +121,13 @@ def _register_failed_attempt():
 
 
 def _complete_login(user_row: dict):
+    from database import log_audit
     st.session_state["authenticated"] = True
     st.session_state["user_id"] = user_row["id"]
     st.session_state["user_email"] = user_row["email"]
     st.session_state["user_plan"] = user_row.get("plan", "free")
     st.session_state.login_attempts = 0
+    log_audit(user_row["id"], "login", user_row["email"])
     st.success("Access granted. Loading your lead workspace...")
     try:
         st.switch_page("main.py")

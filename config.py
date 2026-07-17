@@ -1,31 +1,98 @@
 """
-Configuration settings and system instructions for the B2B Lead Generation Agent.
+LeadAgent.io — Enterprise configuration
+Pricing tiers, plan limits, and AI system instructions.
 """
 
 import os
 
-# Google GenAI Model Configuration
-# Defaulting to gemini-2.5-flash for fast, accurate, and cost-effective text generation.
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
-# Default Target Ideal Customer Profile (ICP) for qualification
+ADMIN_EMAILS = [
+    e.strip().lower()
+    for e in os.environ.get("ADMIN_EMAILS", "").split(",")
+    if e.strip()
+]
+
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_PRO = os.environ.get("STRIPE_PRICE_PRO", "")
+STRIPE_PRICE_ENTERPRISE = os.environ.get("STRIPE_PRICE_ENTERPRISE", "")
+
+APP_URL = os.environ.get("APP_URL", "http://localhost:8501")
+
+PLANS = {
+    "free": {
+        "name": "Starter",
+        "price_monthly": 0,
+        "price_annual": 0,
+        "runs_per_month": 5,
+        "leads_per_run": 5,
+        "api_access": False,
+        "email_sequences": False,
+        "contact_enrichment": False,
+        "crm_export": True,
+        "priority_support": False,
+        "white_label": False,
+        "team_seats": 1,
+    },
+    "pro": {
+        "name": "Professional",
+        "price_monthly": 497,
+        "price_annual": 4970,
+        "runs_per_month": 100,
+        "leads_per_run": 20,
+        "api_access": True,
+        "email_sequences": True,
+        "contact_enrichment": True,
+        "crm_export": True,
+        "priority_support": True,
+        "white_label": False,
+        "team_seats": 3,
+    },
+    "enterprise": {
+        "name": "Enterprise",
+        "price_monthly": 2497,
+        "price_annual": 24970,
+        "runs_per_month": -1,
+        "leads_per_run": 50,
+        "api_access": True,
+        "email_sequences": True,
+        "contact_enrichment": True,
+        "crm_export": True,
+        "priority_support": True,
+        "white_label": True,
+        "team_seats": 25,
+    },
+}
+
 DEFAULT_ICP = {
     "target_industries": ["SaaS", "Fintech", "Healthtech", "E-commerce", "AI/ML Startups"],
     "company_sizes": ["10-50 employees", "50-200 employees"],
-    "key_decision_makers": ["CEO", "CTO", "Founder", "VP of Sales", "Head of Growth", "Head of Product"],
+    "key_decision_makers": ["CEO", "CTO", "Founder", "VP of Sales", "Head of Growth"],
     "geography": ["North America", "Europe", "APAC"],
 }
 
-# Core System Instructions for the Lead Generation & Qualification Agent
 SYSTEM_INSTRUCTIONS = """
-You are a highly sophisticated B2B Lead Generation, Qualification, and Personalization Agent.
-Your objective is to analyze company and contact information, evaluate them against a target Ideal Customer Profile (ICP), and construct highly personalized cold outreach messages that drive conversions.
+You are LeadAgent.io — an enterprise B2B lead intelligence agent used by revenue teams
+at high-growth companies. Your job is to analyze company websites, score ICP fit with
+evidence, identify decision makers, surface buying signals, and craft outreach that
+converts.
 
-Execute your tasks by adhering to the following rules:
-1. **Analyze Company Data**: Identify the target company's business model, primary target audience, core offerings, and likely operational pain points.
-2. **Evaluate ICP Fit**: Grade the lead on a scale of 0 to 100 based on how well they align with the defined ICP criteria. Provide a structured explanation for the score.
-3. **Hyper-Personalize Outreach**: Avoid generic templates. The outreach copy (emails/LinkedIn messages) must open with a contextually rich hook, reference their business model or product, highlight a specific pain point we can resolve, and offer a clear value proposition.
-4. **Keep it Concise**: Cold outreach messages should be professional, compelling, and under 150 words.
-5. **Low-Friction Call to Action (CTA)**: End with a soft, low-barrier question rather than a direct meeting request (e.g., 'Are you open to a brief exchange on how you handle X?' rather than 'Can we call on Tuesday at 2 PM?').
-6. **Data Quality**: Ensure all lead attributes, scoring reasons, and personalization elements conform precisely to the output schema requested.
+Rules:
+1. Score 0-100 with explicit reasoning tied to ICP criteria — never inflate scores.
+2. Identify 2-4 concrete pain points from website copy, not generic assumptions.
+3. Flag buying signals: hiring, funding mentions, product launches, tech migrations.
+4. Outreach must reference something specific from their site — no template spam.
+5. Contact enrichment: infer the most likely decision maker title and email pattern.
+6. Email sequences: 3 touches — value-first open, social proof follow-up, polite breakup.
+7. All output must conform exactly to the requested JSON schema.
 """
+
+MARKETING_FRAMEWORKS = [
+    "PAS (Problem, Agitation, Solution)",
+    "AIDA (Attention, Interest, Desire, Action)",
+    "Direct Value Hook",
+    "Soft Curiosity Drop",
+    "Challenger Sale Insight",
+    "SPIN Selling (Situation-Problem-Implication-Need)",
+]

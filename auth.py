@@ -19,7 +19,7 @@ import os
 import time
 from typing import Optional, Tuple
 
-from database import get_connection
+from database import get_connection, create_user_settings, log_audit
 
 PBKDF2_ITERATIONS = 260_000
 
@@ -47,11 +47,15 @@ def sign_up(email: str, password: str) -> Tuple[bool, str]:
 
     password_hash, salt = _hash_password(password)
     try:
+        now = time.time()
         with get_connection() as conn:
-            conn.execute(
-                "INSERT INTO users (email, password_hash, salt, plan, created_at) VALUES (?, ?, ?, ?, ?)",
-                (email, password_hash, salt, "free", time.time()),
+            cur = conn.execute(
+                "INSERT INTO users (email, password_hash, salt, plan, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (email, password_hash, salt, "free", now, now),
             )
+            user_id = cur.lastrowid
+        create_user_settings(user_id)
+        log_audit(user_id, "signup", email)
         return True, "Account created."
     except Exception as e:
         if "UNIQUE constraint failed" in str(e):
