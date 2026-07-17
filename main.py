@@ -45,6 +45,8 @@ no external JS framework, so there is nothing to bundle or break):
 """
 
 import os
+import re
+import time
 import csv
 import io
 import json
@@ -138,6 +140,29 @@ def discover_company_urls(query: str, serper_api_key: str, num_results: int = 5)
         pass
 
     return discovered_urls
+
+
+def call_gemini_with_retry(model, prompt: str, generation_config, max_retries: int = 3):
+    """
+    Calls Gemini, and if the free-tier rate limit (429) is hit, waits for the
+    server-suggested retry delay (parsed from the error message) and tries
+    again, up to max_retries times. Raises the last error if it still fails.
+    """
+    last_error: Exception = RuntimeError("Gemini call failed with no captured error")
+    for attempt in range(max_retries):
+        try:
+            return model.generate_content(prompt, generation_config=generation_config)
+        except Exception as e:
+            last_error = e
+            error_text = str(e)
+            if "429" not in error_text and "quota" not in error_text.lower():
+                raise
+            match = re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", error_text)
+            wait_seconds = int(match.group(1)) + 2 if match else 15
+            if attempt < max_retries - 1:
+                st.info(f"Rate limit hit. Waiting {wait_seconds}s before retrying ({attempt + 1}/{max_retries})...")
+                time.sleep(wait_seconds)
+    raise last_error
 
 
 # ============================================================
@@ -346,6 +371,81 @@ def render_loading_overlay(message: str = "Spinning up the discovery engine...")
         <p>{message}</p>
     </div>
     """, unsafe_allow_html=True)
+
+
+def render_onboarding_banner():
+    """First-run guidance banner. Dismissed permanently once the user closes it."""
+    if st.session_state.onboarding_dismissed:
+        return
+    st.markdown("""
+    <div class="onboarding-banner">
+        <h4>👋 New here?</h4>
+        <p>Set your niche, city, and ICP in the sidebar, add your API keys, then hit
+        "Initialize Autonomous Agents Pipeline". Results, tags, and notes are kept for
+        this session — use Save Session below to keep them longer.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Got it, don't show this again", key="dismiss_onboarding"):
+        st.session_state.onboarding_dismissed = True
+        st.rerun()
+
+
+def estimate_tokens(text: str) -> int:
+    """Rough token estimate (~4 characters per token) for usage tracking, not billing-accurate."""
+    return max(1, len(text) // 4)
+
+
+def track_usage(prompt_text: str, response_text: str):
+    """Accumulates a rough token/cost estimate across the session."""
+    st.session_state.usage_tokens_est += estimate_tokens(prompt_text) + estimate_tokens(response_text)
+    st.session_state.usage_calls += 1
+
+
+def render_usage_meter():
+    """Displays the running usage estimate in the sidebar. Approximate, not a billing source."""
+    tokens = st.session_state.usage_tokens_est
+    calls = st.session_state.usage_calls
+    # Rough placeholder blended rate; real cost depends on the model and Google's current pricing.
+    est_cost = round((tokens / 1_000_000) * 0.35, 4)
+    st.sidebar.markdown(f"""
+    <div class="usage-meter">
+        <div>Calls this session: <b>{calls}</b></div>
+        <div>Est. tokens: <b>{tokens:,}</b></div>
+        <div>Est. cost: <b>${est_cost}</b></div>
+        <div style="margin-top:0.3rem; color:#64748b; font-size:0.72rem;">Rough estimate only — check Google AI Studio for exact billing.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def export_session_json() -> str:
+    """Serializes the full working session (leads, notes, tags, selections) for later restore."""
+    leads_payload = []
+    for url, lead in st.session_state.processed_leads:
+        leads_payload.append({"url": url, "lead": lead.model_dump()})
+    return json.dumps({
+        "processed_leads": leads_payload,
+        "selected_leads": st.session_state.selected_leads,
+        "removed_lead_urls": list(st.session_state.removed_lead_urls),
+        "lead_notes": st.session_state.lead_notes,
+        "lead_tags": st.session_state.lead_tags,
+    }, indent=2)
+
+
+def import_session_json(raw_json: str) -> bool:
+    """Restores a previously exported session. Returns True on success."""
+    try:
+        data = json.loads(raw_json)
+        restored = []
+        for item in data.get("processed_leads", []):
+            restored.append((item["url"], LeadQualificationResult.model_validate(item["lead"])))
+        st.session_state.processed_leads = restored
+        st.session_state.selected_leads = data.get("selected_leads", {})
+        st.session_state.removed_lead_urls = set(data.get("removed_lead_urls", []))
+        st.session_state.lead_notes = data.get("lead_notes", {})
+        st.session_state.lead_tags = data.get("lead_tags", {})
+        return True
+    except Exception:
+        return False
 
 
 # ============================================================
@@ -1756,6 +1856,76 @@ st.markdown("""
         font-size: 0.85rem;
         margin: 0;
     }
+    /* ============================================================
+       TAG CHIPS — custom labels a user attaches to a lead
+       ============================================================ */
+    .tag-chip {
+        display: inline-block;
+        padding: 0.15rem 0.6rem;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        margin: 0 0.3rem 0.3rem 0;
+        background: rgba(99, 102, 241, 0.15);
+        color: #a5b4fc;
+        border: 1px solid rgba(99, 102, 241, 0.35);
+        animation: badge-pop 0.3s ease both;
+    }
+    .tag-chip.duplicate {
+        background: rgba(251, 191, 36, 0.12);
+        color: #fbbf24;
+        border-color: rgba(251, 191, 36, 0.35);
+    }
+
+    /* ============================================================
+       ONBOARDING BANNER — first-run guidance, dismissible
+       ============================================================ */
+    .onboarding-banner {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(167, 139, 250, 0.08));
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 14px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        animation: fadeInDown 0.5s ease-out both;
+    }
+    .onboarding-banner h4 {
+        margin: 0 0 0.35rem 0;
+        color: #e0e7ff;
+    }
+    .onboarding-banner p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+
+    /* ============================================================
+       USAGE METER — running estimate of API consumption
+       ============================================================ */
+    .usage-meter {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        margin-top: 0.75rem;
+        font-size: 0.78rem;
+        color: #94a3b8;
+    }
+    .usage-meter b { color: #e2e8f0; }
+
+    /* ============================================================
+       PRINT STYLES — clean printable lead report
+       ============================================================ */
+    @media print {
+        .starfield, .stSidebar, div.stButton, [data-testid="stSlider"] {
+            display: none !important;
+        }
+        .premium-lead-card {
+            break-inside: avoid;
+            box-shadow: none !important;
+            border: 1px solid #333 !important;
+        }
+        body, .stApp { background: #ffffff !important; color: #000000 !important; }
+    }
 </style>
 
 <div class="starfield"></div>
@@ -1782,6 +1952,18 @@ if "removed_lead_urls" not in st.session_state:
     st.session_state.removed_lead_urls = set()
 if "processed_leads" not in st.session_state:
     st.session_state.processed_leads = []
+if "lead_notes" not in st.session_state:
+    st.session_state.lead_notes = {}
+if "lead_tags" not in st.session_state:
+    st.session_state.lead_tags = {}
+if "seen_urls" not in st.session_state:
+    st.session_state.seen_urls = set()
+if "usage_tokens_est" not in st.session_state:
+    st.session_state.usage_tokens_est = 0
+if "usage_calls" not in st.session_state:
+    st.session_state.usage_calls = 0
+if "onboarding_dismissed" not in st.session_state:
+    st.session_state.onboarding_dismissed = False
 
 st.sidebar.markdown("### 🧠 Persuasion Psychology Model")
 st.session_state.marketing_framework = st.sidebar.selectbox(
@@ -1807,6 +1989,13 @@ render_system_status(
     gemini_ok=bool(api_key),
     serper_ok=bool(serper_api_key),
     resend_ok=bool(resend_api_key),
+)
+
+st.sidebar.markdown("### ⏱️ Rate Limiting")
+free_tier_throttle = st.sidebar.toggle(
+    "Free-tier throttling (5 req/min)",
+    value=True,
+    help="Google's free Gemini API tier allows 5 requests per minute. Turn this off only if billing is enabled on your Google AI Studio project.",
 )
 
 with st.sidebar.expander("❓ Quick Help"):
@@ -1911,7 +2100,7 @@ Requirements for the generated outreach sequence (only if the lead is qualified)
                     response_schema=LeadQualificationResult,
                     temperature=0.1,
                 )
-                response = model.generate_content(prompt, generation_config=generation_config)
+                response = call_gemini_with_retry(model, prompt, generation_config)
                 result = LeadQualificationResult.model_validate_json(response.text)
                 processed_leads.append((url, result))
                 log_lines.append(f"({idx + 1}/{len(urls)}) ✅ Qualification score: {result.qualification_score}/100")
@@ -1921,6 +2110,9 @@ Requirements for the generated outreach sequence (only if the lead is qualified)
 
             with feed_slot.container():
                 render_activity_feed(log_lines[-6:])
+
+            if free_tier_throttle and idx < len(urls) - 1:
+                time.sleep(12)
 
             p_bar.progress((idx + 1) / len(urls))
 
