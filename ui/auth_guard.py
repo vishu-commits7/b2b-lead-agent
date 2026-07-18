@@ -37,7 +37,7 @@ def require_auth(redirect_to_login: bool = True):
             st.warning("Please sign in to access LeadAgent.io")
             if st.button("Go to Login"):
                 try:
-                    st.switch_page("login.py")
+                    st.switch_page("pages/login.py")
                 except Exception:
                     st.info("Run `streamlit run login.py` to sign in.")
             st.stop()
